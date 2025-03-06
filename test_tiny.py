@@ -3,68 +3,8 @@ import pytest
 import requests
 from datetime import date
 
-BASE_URL = "http://localhost:8080"  # URL of the Spring Boot API
+from test_setup import db_conn,setup_db, setup_poule, setup_ferme
 
-@pytest.fixture
-def db_conn():
-    """Creates an in-memory SQLite database connection."""
-    conn = sqlite3.connect(":memory:")  # Use an in-memory DB
-    yield conn
-    conn.close()
-
-@pytest.fixture
-def setup_db(db_conn):
-    """Creates tables in memory before each test."""
-    cur = db_conn.cursor()  # Create cursor
-    cur.execute("""
-        CREATE TABLE ferme (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom TEXT NOT NULL,
-            solde_ecus INTEGER DEFAULT 1500
-        );
-    """)
-    cur.execute("""
-        CREATE TABLE animal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT NOT NULL,
-            poids REAL NOT NULL,
-            age INTEGER NOT NULL,
-            sexe TEXT CHECK(sexe IN ('male', 'femelle')),
-            ferme_id INTEGER REFERENCES ferme(id) ON DELETE CASCADE
-        );
-    """)
-    cur.execute("""
-        CREATE TABLE alimentation (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            animal_id INTEGER REFERENCES animal(id) ON DELETE CASCADE,
-            date_nourrissage DATE NOT NULL DEFAULT CURRENT_DATE
-        );
-    """)
-    db_conn.commit()
-    cur.close()  # Close cursor
-
-@pytest.fixture
-def setup_ferme(db_conn, setup_db):
-    """Adds a farm to the in-memory database."""
-    cur = db_conn.cursor()
-    cur.execute("INSERT INTO ferme (nom) VALUES ('FermeTest');")
-    ferme_id = cur.lastrowid  # Remplace RETURNING id
-    db_conn.commit()
-    cur.close()
-    return ferme_id
-
-@pytest.fixture
-def setup_poule(db_conn, setup_ferme):
-    """Adds a hen to the farm."""
-    cur = db_conn.cursor()
-    cur.execute("""
-        INSERT INTO animal (type, poids, age, sexe, ferme_id) 
-        VALUES ('poule', 2.5, 5, 'femelle', ?);
-    """, (setup_ferme,))
-    animal_id = cur.lastrowid  # Remplace RETURNING id
-    db_conn.commit()
-    cur.close()
-    return animal_id
 
 def test_creation_ferme(db_conn, setup_db):
     """Tests farm creation in SQLite."""
